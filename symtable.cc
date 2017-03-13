@@ -2,9 +2,7 @@
 
 using namespace std;
 
-ScopedTable :: ScopedTable() {
-}
-
+ScopedTable :: ScopedTable() {}
 ScopedTable :: ~ScopedTable() {}
 
 void ScopedTable :: insert (Symbol &sym) {
@@ -29,33 +27,22 @@ Symbol* ScopedTable :: find (const char *name) {
   else {
     return &symbols.find(name)->second;
   }
-
-/*
-  if (found == symbols.end()) {
-    return NULL;
-  }
-  else {
-    return found;
-  }
-  */
 }
 
-/*
+
 void ScopedTable::printScopedTable() {
   SymbolIterator it = symbols.begin();
   for(; it != symbols.end(); it++){
     if(it->second.kind == 1){
       cerr << "  Name: " << (it)->second.decl << endl;
       cerr << "  Kind: VarDecl" << endl;
-      // cerr << "  Type: " << (it)->second.decl->GetType()->PrintToStream() << endl <<
-      cerr << "  someInfo: "  << (it)->second.someInfo << endl;
     }
     else {
-      cerr << (it)->second.decl << endl << "  "  << "Kind: " << "FnDecl" <<
-      endl << "  " << "someInfo: "  << (it)->second.someInfo << endl;
+      cerr << (it)->second.decl << endl << "  "  << "Kind: " << "FnDecl";
     }
   }
 }
+
 
 void SymbolTable::printSymbolTable(bool debug) {
 
@@ -73,7 +60,7 @@ void SymbolTable::printSymbolTable(bool debug) {
   // tables.at(tables.size() - 1).printScopedTable();
 }
 
-*/
+
 SymbolTable :: SymbolTable () {
   // tables = {};
   tables.push_back(new ScopedTable());
@@ -112,9 +99,8 @@ Symbol* SymbolTable :: find (const char *name) {
   return NULL;
 }
 
-/*
+
 Symbol* SymbolTable :: findInCurrentScope (const char *name) {
 	ScopedTable *current = tables.at(tables.size()-1);
 	return current->find(name);
 }
-*/ 
