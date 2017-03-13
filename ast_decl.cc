@@ -5,11 +5,11 @@
 #include "ast_decl.h"
 #include "ast_type.h"
 #include "ast_stmt.h"
-#include "symtable.h"        
-         
+#include "symtable.h"
+
 Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
     Assert(n != NULL);
-    (id=n)->SetParent(this); 
+    (id=n)->SetParent(this);
 }
 
 VarDecl::VarDecl(Identifier *n, Type *t, Expr *e) : Decl(n) {
@@ -32,8 +32,8 @@ VarDecl::VarDecl(Identifier *n, Type *t, TypeQualifier *tq, Expr *e) : Decl(n) {
     (typeq=tq)->SetParent(this);
     if (e) (assignTo=e)->SetParent(this);
 }
-  
-void VarDecl::PrintChildren(int indentLevel) { 
+
+void VarDecl::PrintChildren(int indentLevel) {
    if (typeq) typeq->Print(indentLevel+1);
    if (type) type->Print(indentLevel+1);
    if (id) id->Print(indentLevel+1);
@@ -56,7 +56,7 @@ FnDecl::FnDecl(Identifier *n, Type *r, TypeQualifier *rq, List<VarDecl*> *d) : D
     body = NULL;
 }
 
-void FnDecl::SetFunctionBody(Stmt *b) { 
+void FnDecl::SetFunctionBody(Stmt *b) {
     (body=b)->SetParent(this);
 }
 
@@ -66,4 +66,3 @@ void FnDecl::PrintChildren(int indentLevel) {
     if (formals) formals->PrintAll(indentLevel+1, "(formals) ");
     if (body) body->Print(indentLevel+1, "(body) ");
 }
-
