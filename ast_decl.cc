@@ -12,6 +12,14 @@ Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
     (id=n)->SetParent(this);
 }
 
+void VarDecl::Emit() {
+    Symbol *first = symtab->findInCurrentScope(GetIdentifier()->GetName());
+}
+
+void FnDecl::Emit() {
+    // stuff
+}
+
 VarDecl::VarDecl(Identifier *n, Type *t, Expr *e) : Decl(n) {
     Assert(n != NULL && t != NULL);
     (type=t)->SetParent(this);

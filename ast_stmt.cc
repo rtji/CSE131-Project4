@@ -10,7 +10,7 @@
 
 #include "irgen.h"
 #include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/raw_ostream.h"                                                   
+#include "llvm/Support/raw_ostream.h"
 
 
 Program::Program(List<Decl*> *d) {
@@ -24,41 +24,14 @@ void Program::PrintChildren(int indentLevel) {
 }
 
 void Program::Emit() {
-    // TODO:
-    // This is just a reference for you to get started
-    //
-    // You can use this as a template and create Emit() function
-    // for individual node to fill in the module structure and instructions.
-    //
-    IRGenerator irgen;
-    llvm::Module *mod = irgen.GetOrCreateModule("Name_the_Module.bc");
-
-    // create a function signature
-    std::vector<llvm::Type *> argTypes;
-    llvm::Type *intTy = irgen.GetIntType();
-    argTypes.push_back(intTy);
-    llvm::ArrayRef<llvm::Type *> argArray(argTypes);
-    llvm::FunctionType *funcTy = llvm::FunctionType::get(intTy, argArray, false);
-
-    // llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("foo", intTy, intTy, (Type *)0));
-    llvm::Function *f = llvm::cast<llvm::Function>(mod->getOrInsertFunction("Name_the_function", funcTy));
-    llvm::Argument *arg = f->arg_begin();
-    arg->setName("x");
-
-    // insert a block into the runction
-    llvm::LLVMContext *context = irgen.GetContext();
-    llvm::BasicBlock *bb = llvm::BasicBlock::Create(*context, "entry", f);
-
-    // create a return instruction
-    llvm::Value *val = llvm::ConstantInt::get(intTy, 1);
-    llvm::Value *sum = llvm::BinaryOperator::CreateAdd(arg, val, "", bb);
-    llvm::ReturnInst::Create(*context, sum, bb);
-
-    // write the BC into standard output
-    llvm::WriteBitcodeToFile(mod, llvm::outs());
-
-    //uncomment the next line to generate the human readable/assembly file
-    //mod->dump();
+    if (decls->NumElements() > 0) {
+        for (int i = 0; i < decls->NumElements(); i++) {
+            Decl *declarations = decls->Nth(i);
+            if (declarations) {
+                declarations->Emit();
+            }
+        }
+    }
 }
 
 StmtBlock::StmtBlock(List<VarDecl*> *d, List<Stmt*> *s) {
@@ -81,13 +54,13 @@ void DeclStmt::PrintChildren(int indentLevel) {
     decl->Print(indentLevel+1);
 }
 
-ConditionalStmt::ConditionalStmt(Expr *t, Stmt *b) { 
+ConditionalStmt::ConditionalStmt(Expr *t, Stmt *b) {
     Assert(t != NULL && b != NULL);
-    (test=t)->SetParent(this); 
+    (test=t)->SetParent(this);
     (body=b)->SetParent(this);
 }
 
-ForStmt::ForStmt(Expr *i, Expr *t, Expr *s, Stmt *b): LoopStmt(t, b) { 
+ForStmt::ForStmt(Expr *i, Expr *t, Expr *s, Stmt *b): LoopStmt(t, b) {
     Assert(i != NULL && t != NULL && b != NULL);
     (init=i)->SetParent(this);
     step = s;
@@ -108,7 +81,7 @@ void WhileStmt::PrintChildren(int indentLevel) {
     body->Print(indentLevel+1, "(body) ");
 }
 
-IfStmt::IfStmt(Expr *t, Stmt *tb, Stmt *eb): ConditionalStmt(t, tb) { 
+IfStmt::IfStmt(Expr *t, Stmt *tb, Stmt *eb): ConditionalStmt(t, tb) {
     Assert(t != NULL && tb != NULL); // else can be NULL
     elseBody = eb;
     if (elseBody) elseBody->SetParent(this);
@@ -121,13 +94,13 @@ void IfStmt::PrintChildren(int indentLevel) {
 }
 
 
-ReturnStmt::ReturnStmt(yyltype loc, Expr *e) : Stmt(loc) { 
+ReturnStmt::ReturnStmt(yyltype loc, Expr *e) : Stmt(loc) {
     expr = e;
     if (e != NULL) expr->SetParent(this);
 }
 
 void ReturnStmt::PrintChildren(int indentLevel) {
-    if ( expr ) 
+    if ( expr )
       expr->Print(indentLevel+1);
 }
 
@@ -161,4 +134,3 @@ void SwitchStmt::PrintChildren(int indentLevel) {
     if (cases) cases->PrintAll(indentLevel+1);
     if (def) def->Print(indentLevel+1);
 }
-
