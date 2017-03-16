@@ -40,6 +40,7 @@
 #include <stdlib.h>   // for NULL
 #include "location.h"
 #include <iostream>
+#include "irgen.h"
 
 using namespace std;
 
@@ -54,7 +55,8 @@ class Node  {
 
   public:
     static SymbolTable *symtab;
-    
+    static IRGenerator *irgen;
+
     Node(yyltype loc);
     Node();
     virtual ~Node() {}

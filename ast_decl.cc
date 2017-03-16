@@ -13,7 +13,40 @@ Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
 }
 
 void VarDecl::Emit() {
-    Symbol *first = symtab->findInCurrentScope(GetIdentifier()->GetName());
+    Symbol *sym = symtab->findInCurrentScope(GetIdentifier()->GetName());
+    llvm::Module *mod = irgen->GetOrCreateModule("mod.bc");
+
+    VarDecl *vDecl = dynamic_cast<VarDecl*>(sym->decl);
+
+
+    // mod->getOrInsertGlobal(llvm::StringRef(sym->name), llvm::Type*(vDecl->GetType()));
+
+
+
+
+    // CASE 1: Global variable
+    llvm::GlobalVariable *validGlobal = dynamic_cast<llvm::GlobalVariable*>(sym->value);
+
+    if (validGlobal) {
+
+        validGlobal = new llvm::GlobalVariable
+            (*mod,
+            sym->value->getType(),
+            true,
+            llvm::GlobalValue::ExternalLinkage,
+            llvm::Constant::getNullValue(sym->value->getType()),
+            llvm::Twine(*sym->name));
+
+        // llvm::GlobalVariable *var = new llvm::GlobalVariable(*irgen->GetOrCreateModule("mod.bc"), t, false, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(t), this->GetIdentifier()->GetName());
+    }
+
+    // CASE 2: Local variable
+    llvm::AllocaInst *validLocal = dynamic_cast<llvm::AllocaInst*>(sym->value);
+
+    if (validLocal) {
+        // do stuff
+    }
+
 }
 
 void FnDecl::Emit() {

@@ -24,6 +24,8 @@ void Program::PrintChildren(int indentLevel) {
 }
 
 void Program::Emit() {
+    llvm::Module *mod = irgen->GetOrCreateModule("mod.bc");
+
     if (decls->NumElements() > 0) {
         for (int i = 0; i < decls->NumElements(); i++) {
             Decl *declarations = decls->Nth(i);
