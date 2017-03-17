@@ -97,7 +97,7 @@ class ForStmt : public LoopStmt
     ForStmt(Expr *init, Expr *test, Expr *step, Stmt *body);
     const char *GetPrintNameForNode() { return "ForStmt"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class WhileStmt : public LoopStmt
@@ -119,7 +119,7 @@ class IfStmt : public ConditionalStmt
     IfStmt(Expr *test, Stmt *thenBody, Stmt *elseBody);
     const char *GetPrintNameForNode() { return "IfStmt"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class IfStmtExprError : public IfStmt

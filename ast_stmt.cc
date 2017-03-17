@@ -12,6 +12,8 @@
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Support/raw_ostream.h"
 
+using namespace llvm;
+
 
 Program::Program(List<Decl*> *d) {
     Assert(d != NULL);
@@ -21,6 +23,65 @@ Program::Program(List<Decl*> *d) {
 void Program::PrintChildren(int indentLevel) {
     decls->PrintAll(indentLevel+1);
     printf("\n");
+}
+
+llvm::Value* ForStmt::Emit() {
+    // cuz we need a new scope yoooo :)
+    symtab->push();
+
+    // so we don't have to keep typing irgen->GetBasicBlock()
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    // create and push basic block for footer, step, body and header
+    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *stepBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+
+    // emit for initialization if any
+    if (init) {
+        init->Emit();
+    }
+
+    // create a branch to terminate current basic block and start loop header
+    llvm::BranchInst::Create(headerBlock, block);
+    headerBlock->moveAfter(block);
+
+    // IR gen for headBB
+    irgen->SetBasicBlock(headerBlock);
+
+    // emit for test
+    llvm::BranchInst::Create(bodyBlock, footerBlock, test->Emit(), headerBlock);
+
+    // jump to footer
+
+
+    // emit for body
+    if (body) {
+        body->Emit();
+    }
+
+    // check if there is a terminator instruction else create one
+    if (!bodyBlock->getTerminator()) {
+        llvm::BranchInst::Create(stepBlock, bodyBlock);
+    }
+
+    // emit for step
+    irgen->SetBasicBlock(stepBlock);
+    stepBlock->moveAfter(bodyBlock);
+    if (step) {
+        step->Emit();
+    }
+    llvm::BranchInst::Create(headerBlock, stepBlock);
+    footerBlock->moveAfter(stepBlock);
+
+    // create terminator for step*/
+    if (!stepBlock->getTerminator()) {
+        llvm::BranchInst::Create(footerBlock, stepBlock);
+    }
+
+    symtab->pop();
+    return NULL;
 }
 
 llvm::Value* Program::Emit() {
@@ -36,6 +97,60 @@ llvm::Value* Program::Emit() {
     }
 
     llvm::WriteBitcodeToFile(mod, llvm::outs());
+    return NULL;
+}
+
+llvm::Value* IfStmt::Emit() {
+    llvm::BasicBlock* block = irgen->GetBasicBlock();
+
+    // emit for test condition
+    llvm::Value* check = test->Emit();
+    symtab->push();
+
+    // create and push basic block for footer
+    llvm::BasicBlock *footerBlock =
+        llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    irgen->footStack->push(footerBlock);
+
+    // if "if statement" has a corresponding else body, create basic block for elsebody and push
+    llvm::BasicBlock *elseBlock;
+    if (elseBody) {
+        elseBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+        //irgen->elseStack->push(elseBlock);
+    }
+
+    // create basic block for then part
+    llvm::BasicBlock *thenBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+
+    // create branch instructions with all parameters calculated above
+    llvm::BranchInst::Create(thenBlock, elseBody ? elseBlock : footerBlock, check, block);
+    thenBlock->moveAfter(block);
+    // emit code for point then-basicblock
+    irgen->SetBasicBlock(thenBlock);
+    body->Emit();
+    elseBlock->moveAfter(thenBlock);
+
+    // create jump to foot-basicblock
+    if (!thenBlock->getTerminator()) {
+        llvm::BranchInst::Create(footerBlock, thenBlock);
+    }
+
+    symtab->pop();
+    symtab->push();
+
+    // emit code for point else-basicblock
+    if (elseBody) {
+        irgen->SetBasicBlock(elseBlock);
+        elseBody->Emit();
+        // create jump for else-basicblock
+        if (!elseBlock->getTerminator()) {
+            llvm::BranchInst::Create(footerBlock, elseBlock);
+        }
+    }
+    footerBlock->moveAfter(elseBlock);
+    irgen->footStack->pop();
+
+    symtab->pop();
     return NULL;
 }
 
@@ -59,7 +174,6 @@ llvm::Value* StmtBlock::Emit() {
 
     return NULL;
 }
-
 
 llvm::Value* DeclStmt::Emit() {
     if (decl) {

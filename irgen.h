@@ -16,6 +16,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
+#include <stack>
 //#include "ast_type.h"
 
 class IRGenerator {
@@ -23,15 +24,18 @@ class IRGenerator {
     IRGenerator();
     ~IRGenerator();
 
+    std::stack<llvm::BasicBlock*>* footStack;
+    std::stack<llvm::BasicBlock*>* elseStack;
+
     llvm::Module   *GetOrCreateModule(const char *moduleID);
     llvm::LLVMContext *GetContext() const { return context; }
 
     // Add your helper functions here
     llvm::Function *GetFunction() const;
-    void      SetFunction(llvm::Function *func);
+    void SetFunction(llvm::Function *func);
 
     llvm::BasicBlock *GetBasicBlock() const;
-    void        SetBasicBlock(llvm::BasicBlock *bb);
+    void SetBasicBlock(llvm::BasicBlock *bb);
 
     llvm::Type *GetIntType() const;
     llvm::Type *GetBoolType() const;

@@ -139,7 +139,7 @@ class RelationalExpr : public CompoundExpr
   public:
     RelationalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "RelationalExpr"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class EqualityExpr : public CompoundExpr

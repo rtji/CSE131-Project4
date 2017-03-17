@@ -9,6 +9,60 @@
 #include "ast_decl.h"
 #include "symtable.h"
 
+llvm::Value* RelationalExpr::Emit() {
+    llvm::Value *leftExpr = left->Emit();
+    llvm::Value *rightExpr = right->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    if (leftExpr->getType() == irgen->GetIntType() &&
+    rightExpr->getType() == irgen->GetIntType()) {
+        if (op->IsOp(">")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_SGT,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp(">=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_SGE,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("<")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_SLT,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("<=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_SLE,
+                leftExpr, rightExpr, "", block);
+        }
+    }
+
+    else if (leftExpr->getType() == irgen->GetFloatType() &&
+    rightExpr->getType() == irgen->GetFloatType()) {
+        if (op->IsOp(">")) {
+        cerr << "yes";
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_OGT,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp(">=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_OGE,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("<")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_OLT,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("<=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_OLE,
+                leftExpr, rightExpr, "", block);
+        }
+    }
+}
 
 llvm::Value* AssignExpr::Emit() {
     llvm::Value *leftExpr = left->Emit();
@@ -18,17 +72,36 @@ llvm::Value* AssignExpr::Emit() {
     /*---------- LEFT: INT, RIGHT: INT ----------*/
     if (leftExpr->getType() == irgen->GetIntType() &&
     rightExpr->getType() == irgen->GetIntType()) {
-        if (op->IsOp("+")) {
-            return llvm::BinaryOperator::CreateAdd (leftExpr, rightExpr, "", block);
+
+        llvm::LoadInst *leftLoc = llvm::cast<llvm::LoadInst>(leftExpr);
+
+        if (op->IsOp("=")) {
+            new llvm::StoreInst(rightExpr, leftLoc->getPointerOperand(), block);
+            return rightExpr;
         }
-        else if (op->IsOp("-")) {
-            return llvm::BinaryOperator::CreateSub(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("+=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateAdd(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
-        else if (op->IsOp("*")) {
-            return llvm::BinaryOperator::CreateMul(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("-=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateSub(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
-        else if (op->IsOp("/")) {
-            return llvm::BinaryOperator::CreateSDiv(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("*=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateMul(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
+        }
+
+        else if (op->IsOp("/=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateSDiv(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
     }
 
@@ -36,26 +109,42 @@ llvm::Value* AssignExpr::Emit() {
     /*---------- LEFT: FLOAT, RIGHT: FLOAT ----------*/
     else if (leftExpr->getType() == irgen->GetFloatType() &&
     rightExpr->getType() == irgen->GetFloatType()) {
+
+        llvm::LoadInst *leftLoc = llvm::cast<llvm::LoadInst>(leftExpr);
+
         if (op->IsOp("=")) {
-            cerr << "afsfa";
-            return new llvm::StoreInst(leftExpr, rightExpr, block);
+            new llvm::StoreInst(rightExpr, leftLoc->getPointerOperand(), block);
+            return rightExpr;
         }
-        else if (op->IsOp("+")) {
-            return llvm::BinaryOperator::CreateFAdd(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("+=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateFAdd(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
-        else if (op->IsOp("-")) {
-            return llvm::BinaryOperator::CreateFSub(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("-=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateFSub(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
-        else if (op->IsOp("*")) {
-            return llvm::BinaryOperator::CreateFMul(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("*=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateFMul(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
-        else if (op->IsOp("/")) {
-            return llvm::BinaryOperator::CreateFDiv(leftExpr, rightExpr, "", block);
+
+        else if (op->IsOp("/=")) {
+            llvm::Value* result = llvm::BinaryOperator::CreateFDiv(leftExpr, rightExpr, "", block);
+            new llvm::StoreInst(result, leftLoc->getPointerOperand(), block);
+            return result;
         }
     }
-cerr << "fun stuff";
     return NULL;
 }
+
+
 llvm::Value* ArithmeticExpr::Emit() {
 
     llvm::Value *leftExpr = left->Emit();

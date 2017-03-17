@@ -9,7 +9,10 @@ IRGenerator::IRGenerator() :
     context(NULL),
     module(NULL),
     currentFunc(NULL),
-    currentBB(NULL) {}
+    currentBB(NULL)
+    {
+        footStack = new std::stack<llvm::BasicBlock*>;
+    }
 
 IRGenerator::~IRGenerator() {}
 
