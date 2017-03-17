@@ -1,1 +1,2 @@
 funct: foo
+param: int, 4

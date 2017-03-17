@@ -34,6 +34,7 @@ enum EntryKind {
 };
 
 struct Symbol {
+
   char *name;
   Decl *decl;
   EntryKind kind;

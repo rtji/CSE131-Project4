@@ -16,6 +16,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
+//#include "ast_type.h"
 
 class IRGenerator {
   public:
@@ -36,6 +37,8 @@ class IRGenerator {
     llvm::Type *GetBoolType() const;
     llvm::Type *GetFloatType() const;
 
+    //llvm::Type *GetType(Type *type) const;
+
   private:
     llvm::LLVMContext *context;
     llvm::Module      *module;
@@ -49,4 +52,3 @@ class IRGenerator {
 };
 
 #endif
-

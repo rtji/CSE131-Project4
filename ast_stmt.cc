@@ -23,7 +23,7 @@ void Program::PrintChildren(int indentLevel) {
     printf("\n");
 }
 
-void Program::Emit() {
+llvm::Value* Program::Emit() {
     llvm::Module *mod = irgen->GetOrCreateModule("mod.bc");
 
     if (decls->NumElements() > 0) {
@@ -34,6 +34,54 @@ void Program::Emit() {
             }
         }
     }
+
+    llvm::WriteBitcodeToFile(mod, llvm::outs());
+    return NULL;
+}
+
+llvm::Value* StmtBlock::Emit() {
+    if (decls->NumElements() > 0) {
+	for (int i = 0; i < decls->NumElements(); i++) {
+        Decl *d = decls->Nth(i);
+			d->Emit();
+		}
+	}
+
+    if (stmts->NumElements() > 0) {
+	   for (int i = 0; i < stmts->NumElements(); i++) {
+	       Stmt *s = stmts->Nth(i);
+	       StmtBlock *stmtBlock = dynamic_cast<StmtBlock*>(s);
+		   if(stmtBlock) symtab->push();
+		   s->Emit();
+		   if(stmtBlock) symtab->pop();
+	    }
+	}
+
+    return NULL;
+}
+
+
+llvm::Value* DeclStmt::Emit() {
+    if (decl) {
+        decl->Emit();
+    }
+
+    return NULL;
+}
+
+llvm::Value* ReturnStmt::Emit() {
+    llvm::Function *function = irgen->GetFunction();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+    llvm::ReturnInst *toRet;
+
+    // return type is void
+    if (function->getReturnType() == llvm::Type::getVoidTy(*irgen->GetContext())) {
+        toRet = llvm::ReturnInst::Create(*irgen->GetContext(), block);
+    }
+    else {
+        toRet = llvm::ReturnInst::Create(*irgen->GetContext(), expr->Emit(), block);
+    }
+    return toRet;
 }
 
 StmtBlock::StmtBlock(List<VarDecl*> *d, List<Stmt*> *s) {

@@ -41,6 +41,7 @@
 #include "location.h"
 #include <iostream>
 #include "irgen.h"
+//#include "llvm/IR/Value.h"
 
 using namespace std;
 
@@ -72,7 +73,7 @@ class Node  {
     void Print(int indentLevel, const char *label = NULL);
     virtual void PrintChildren(int indentLevel)  {}
 
-    virtual void Emit() {}
+    virtual llvm::Value* Emit() {return NULL;}
 };
 
 

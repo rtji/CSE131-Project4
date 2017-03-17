@@ -12,45 +12,120 @@ Decl::Decl(Identifier *n) : Node(*n->GetLocation()) {
     (id=n)->SetParent(this);
 }
 
-void VarDecl::Emit() {
+llvm::Value* VarDecl::Emit() {
     Symbol *sym = symtab->findInCurrentScope(GetIdentifier()->GetName());
     llvm::Module *mod = irgen->GetOrCreateModule("mod.bc");
 
-    VarDecl *vDecl = dynamic_cast<VarDecl*>(sym->decl);
+    if (!sym) {
 
+        sym = new Symbol(GetIdentifier()->GetName(), this, E_VarDecl, 0);
+        //VarDecl *vDecl = dynamic_cast<VarDecl*>(sym->decl);
+        //cerr << endl << "name: " << sym->name;
 
-    // mod->getOrInsertGlobal(llvm::StringRef(sym->name), llvm::Type*(vDecl->GetType()));
-
-
-
-
-    // CASE 1: Global variable
-    llvm::GlobalVariable *validGlobal = dynamic_cast<llvm::GlobalVariable*>(sym->value);
-
-    if (validGlobal) {
-
-        validGlobal = new llvm::GlobalVariable
-            (*mod,
-            sym->value->getType(),
-            true,
-            llvm::GlobalValue::ExternalLinkage,
-            llvm::Constant::getNullValue(sym->value->getType()),
-            llvm::Twine(*sym->name));
-
-        // llvm::GlobalVariable *var = new llvm::GlobalVariable(*irgen->GetOrCreateModule("mod.bc"), t, false, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(t), this->GetIdentifier()->GetName());
+        if (symtab->isGlobalScope()) {
+            sym->value = new llvm::GlobalVariable(*mod,
+                getLLVMType(),
+                false, llvm::GlobalValue::ExternalLinkage,
+                llvm::Constant::getNullValue(getLLVMType()),
+                sym->name);
+        }
+        else {
+            sym->value = new llvm::AllocaInst(getLLVMType(), sym->name, irgen->GetBasicBlock());
+        }
+        symtab->insert(*sym);
     }
 
-    // CASE 2: Local variable
-    llvm::AllocaInst *validLocal = dynamic_cast<llvm::AllocaInst*>(sym->value);
-
-    if (validLocal) {
-        // do stuff
-    }
-
+    return sym->value;
 }
 
-void FnDecl::Emit() {
-    // stuff
+llvm::Value* FnDecl::Emit() {
+    // get or insert function
+    // specify function type
+    // set names for arguments / formals
+    // create basic blocks
+
+    // search the symbol table for function
+    Symbol *sym = symtab->findInCurrentScope(GetIdentifier()->GetName());
+    llvm::Module *mod = irgen->GetOrCreateModule("mod.bc");
+
+    // if function does not exist, insert it into the symbol table
+    if (!sym) {
+        sym = new Symbol(GetIdentifier()->GetName(), this, E_FunctionDecl, 0);
+        symtab->insert(*sym);
+    }
+
+    // start function scope
+    symtab->push();
+
+    // typeList is a list of argument types
+    std::vector<llvm::Type*> typeList;
+
+    // Add args
+	if (GetFormals()->NumElements() > 0) {
+	    for (int i = 0; i < GetFormals()->NumElements(); i++) {
+		    VarDecl *d = GetFormals()->Nth(i);
+            typeList.push_back(d->getLLVMType());
+		}
+	}
+
+    // convert the list of argumet types
+    llvm::ArrayRef<llvm::Type*> *params = new llvm::ArrayRef<llvm::Type*>(typeList);
+    llvm::FunctionType *functionType = llvm::FunctionType::get(getLLVMType(), *params, false);
+
+    // Make function
+    llvm::Function *fun = llvm::cast<llvm::Function>
+        (mod->getOrInsertFunction(sym->name, functionType));
+
+    irgen->SetFunction(fun);
+
+    // Create BasicBlock(s)
+    llvm::BasicBlock *block = llvm::BasicBlock::Create(*irgen->GetContext(), "entry", fun);
+    irgen->SetBasicBlock(block);
+
+    // Set names of args
+    llvm::Function::arg_iterator argit;
+    int index = 0;
+    for (argit = fun->arg_begin(); argit != fun->arg_end(); argit++) {
+        VarDecl *d = GetFormals()->Nth(index);
+        argit->setName(d->GetIdentifier()->GetName());
+        new llvm::StoreInst(argit, d->Emit(), irgen->GetBasicBlock());
+        index++;
+    }
+
+    body->Emit();
+
+    if (!block->getTerminator()) {
+        llvm::ReturnInst::Create(*irgen->GetContext(), block);
+    }
+
+    symtab->pop();
+    sym->value = fun;
+    return NULL;
+    // return fun;
+}
+
+llvm::Type * VarDecl::getLLVMType() const {
+
+
+    if (GetType() == Type::intType) return irgen->GetIntType();
+    else if (GetType() == Type::boolType) return irgen->GetBoolType();
+    else if (GetType() == Type::floatType) return irgen->GetFloatType();
+    else if (GetType() == Type::vec2Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2);
+    else if (GetType() == Type::vec3Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 3);
+    else if (GetType() == Type::vec4Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 4);
+    else return NULL;
+}
+
+llvm::Type * FnDecl::getLLVMType() const {
+
+    if (GetType() == Type::intType) return irgen->GetIntType();
+    else if (GetType() == Type::boolType) return irgen->GetBoolType();
+    else if (GetType() == Type::floatType) return irgen->GetFloatType();
+    else if (GetType() == Type::voidType) return llvm::Type::getVoidTy(*irgen->GetContext());
+    else if (GetType() == Type::vec2Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2);
+    else if (GetType() == Type::vec3Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 3);
+    else if (GetType() == Type::vec4Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 4);
+    else return NULL;
 }
 
 VarDecl::VarDecl(Identifier *n, Type *t, Expr *e) : Decl(n) {

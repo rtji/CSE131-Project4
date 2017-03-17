@@ -9,24 +9,131 @@
 #include "ast_decl.h"
 #include "symtable.h"
 
+
+llvm::Value* AssignExpr::Emit() {
+    llvm::Value *leftExpr = left->Emit();
+    llvm::Value *rightExpr = right->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    /*---------- LEFT: INT, RIGHT: INT ----------*/
+    if (leftExpr->getType() == irgen->GetIntType() &&
+    rightExpr->getType() == irgen->GetIntType()) {
+        if (op->IsOp("+")) {
+            return llvm::BinaryOperator::CreateAdd (leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateSub(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("*")) {
+            return llvm::BinaryOperator::CreateMul(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("/")) {
+            return llvm::BinaryOperator::CreateSDiv(leftExpr, rightExpr, "", block);
+        }
+    }
+
+
+    /*---------- LEFT: FLOAT, RIGHT: FLOAT ----------*/
+    else if (leftExpr->getType() == irgen->GetFloatType() &&
+    rightExpr->getType() == irgen->GetFloatType()) {
+        if (op->IsOp("=")) {
+            cerr << "afsfa";
+            return new llvm::StoreInst(leftExpr, rightExpr, block);
+        }
+        else if (op->IsOp("+")) {
+            return llvm::BinaryOperator::CreateFAdd(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateFSub(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("*")) {
+            return llvm::BinaryOperator::CreateFMul(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("/")) {
+            return llvm::BinaryOperator::CreateFDiv(leftExpr, rightExpr, "", block);
+        }
+    }
+cerr << "fun stuff";
+    return NULL;
+}
+llvm::Value* ArithmeticExpr::Emit() {
+
+    llvm::Value *leftExpr = left->Emit();
+    llvm::Value *rightExpr = right->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    /*---------- LEFT: INT, RIGHT: INT ----------*/
+    if (leftExpr->getType() == irgen->GetIntType() &&
+    rightExpr->getType() == irgen->GetIntType()) {
+        if (op->IsOp("+")) {
+            return llvm::BinaryOperator::CreateAdd (leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateSub(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("*")) {
+            return llvm::BinaryOperator::CreateMul(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("/")) {
+            return llvm::BinaryOperator::CreateSDiv(leftExpr, rightExpr, "", block);
+        }
+    }
+
+
+    /*---------- LEFT: FLOAT, RIGHT: FLOAT ----------*/
+    else if (leftExpr->getType() == irgen->GetFloatType() &&
+    rightExpr->getType() == irgen->GetFloatType()) {
+        if (op->IsOp("+")) {
+            return llvm::BinaryOperator::CreateFAdd(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateFSub(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("*")) {
+            return llvm::BinaryOperator::CreateFMul(leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("/")) {
+            return llvm::BinaryOperator::CreateFDiv(leftExpr, rightExpr, "", block);
+        }
+    }
+    return NULL;
+}
+llvm::Value* IntConstant::Emit() {
+    return llvm::ConstantInt::get(irgen->GetIntType(), value);
+}
+
+llvm::Value* FloatConstant::Emit() {
+    return llvm::ConstantFP::get(irgen->GetFloatType(), value);
+}
+
+llvm::Value* BoolConstant::Emit() {
+    return llvm::ConstantInt::get(irgen->GetBoolType(), value);
+}
+
+llvm::Value* VarExpr::Emit() {
+    llvm::Value *symbolValue = symtab->find(GetIdentifier()->GetName())->value;
+    return new llvm::LoadInst(symbolValue, GetIdentifier()->GetName(),
+        irgen->GetBasicBlock());
+}
+
 IntConstant::IntConstant(yyltype loc, int val) : Expr(loc) {
     value = val;
 }
-void IntConstant::PrintChildren(int indentLevel) { 
+void IntConstant::PrintChildren(int indentLevel) {
     printf("%d", value);
 }
 
 FloatConstant::FloatConstant(yyltype loc, double val) : Expr(loc) {
     value = val;
 }
-void FloatConstant::PrintChildren(int indentLevel) { 
+void FloatConstant::PrintChildren(int indentLevel) {
     printf("%g", value);
 }
 
 BoolConstant::BoolConstant(yyltype loc, bool val) : Expr(loc) {
     value = val;
 }
-void BoolConstant::PrintChildren(int indentLevel) { 
+void BoolConstant::PrintChildren(int indentLevel) {
     printf("%s", value ? "true" : "false");
 }
 
@@ -52,23 +159,23 @@ bool Operator::IsOp(const char *op) const {
     return strcmp(tokenString, op) == 0;
 }
 
-CompoundExpr::CompoundExpr(Expr *l, Operator *o, Expr *r) 
+CompoundExpr::CompoundExpr(Expr *l, Operator *o, Expr *r)
   : Expr(Join(l->GetLocation(), r->GetLocation())) {
     Assert(l != NULL && o != NULL && r != NULL);
     (op=o)->SetParent(this);
-    (left=l)->SetParent(this); 
+    (left=l)->SetParent(this);
     (right=r)->SetParent(this);
 }
 
-CompoundExpr::CompoundExpr(Operator *o, Expr *r) 
+CompoundExpr::CompoundExpr(Operator *o, Expr *r)
   : Expr(Join(o->GetLocation(), r->GetLocation())) {
     Assert(o != NULL && r != NULL);
-    left = NULL; 
+    left = NULL;
     (op=o)->SetParent(this);
     (right=r)->SetParent(this);
 }
 
-CompoundExpr::CompoundExpr(Expr *l, Operator *o) 
+CompoundExpr::CompoundExpr(Expr *l, Operator *o)
   : Expr(Join(l->GetLocation(), o->GetLocation())) {
     Assert(l != NULL && o != NULL);
     (left=l)->SetParent(this);
@@ -80,7 +187,7 @@ void CompoundExpr::PrintChildren(int indentLevel) {
    op->Print(indentLevel+1);
    if (right) right->Print(indentLevel+1);
 }
-   
+
 ConditionalExpr::ConditionalExpr(Expr *c, Expr *t, Expr *f)
   : Expr(Join(c->GetLocation(), f->GetLocation())) {
     Assert(c != NULL && t != NULL && f != NULL);
@@ -95,7 +202,7 @@ void ConditionalExpr::PrintChildren(int indentLevel) {
     falseExpr->Print(indentLevel+1, "(false) ");
 }
 ArrayAccess::ArrayAccess(yyltype loc, Expr *b, Expr *s) : LValue(loc) {
-    (base=b)->SetParent(this); 
+    (base=b)->SetParent(this);
     (subscript=s)->SetParent(this);
 }
 
@@ -103,12 +210,12 @@ void ArrayAccess::PrintChildren(int indentLevel) {
     base->Print(indentLevel+1);
     subscript->Print(indentLevel+1, "(subscript) ");
 }
-     
-FieldAccess::FieldAccess(Expr *b, Identifier *f) 
+
+FieldAccess::FieldAccess(Expr *b, Identifier *f)
   : LValue(b? Join(b->GetLocation(), f->GetLocation()) : *f->GetLocation()) {
     Assert(f != NULL); // b can be be NULL (just means no explicit base)
-    base = b; 
-    if (base) base->SetParent(this); 
+    base = b;
+    if (base) base->SetParent(this);
     (field=f)->SetParent(this);
 }
 
@@ -131,4 +238,3 @@ void Call::PrintChildren(int indentLevel) {
    if (field) field->Print(indentLevel+1);
    if (actuals) actuals->PrintAll(indentLevel+1, "(actuals) ");
 }
-
