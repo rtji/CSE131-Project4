@@ -25,15 +25,16 @@ return new llvm::LoadInst(arrayElem, "", irgen->GetBasicBlock());
 */
 /*-----------------*/
 
-    std::vector<llvm::Value*> theActualArray;
+    std::vector<llvm::Value*> *theActualArray = new std::vector<llvm::Value*>();
     llvm::Value *pushing = llvm::ConstantInt::get(irgen->GetIntType(), 0);
 
-    theActualArray.push_back(pushing);
-    theActualArray.push_back(subscript->Emit());
+    theActualArray->push_back(pushing);
+    theActualArray->push_back(subscript->Emit());
 
+		llvm::LoadInst *arrayPtr = dynamic_cast<llvm::LoadInst*>(base->Emit());
     llvm::Value* daElement =
         llvm::GetElementPtrInst::Create
-        (dynamic_cast<llvm::LoadInst*>(base->Emit())->getPointerOperand(), theActualArray, "", irgen->GetBasicBlock());
+        (arrayPtr->getPointerOperand(), *theActualArray, "", irgen->GetBasicBlock());
 
 
     return new llvm::LoadInst(daElement, "", irgen->GetBasicBlock());
@@ -199,7 +200,6 @@ llvm::Value* RelationalExpr::Emit() {
     else if (leftExpr->getType() == irgen->GetFloatType() &&
     rightExpr->getType() == irgen->GetFloatType()) {
         if (op->IsOp(">")) {
-        cerr << "yes";
             return llvm::CmpInst::Create
                 (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_OGT,
                 leftExpr, rightExpr, "", block);
