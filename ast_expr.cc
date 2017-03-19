@@ -208,7 +208,7 @@ llvm::Value* PostfixExpr::Emit() {
             leftExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 4)) {
         llvm::Value *opVec = llvm::Constant::getNullValue(leftExpr->getType());
         llvm::Value *num = llvm::ConstantFP::get(irgen->GetFloatType(), 1.0);
-        int numElem;
+        int numElem = 0;
 
         if (leftExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2))
             numElem = 2;
@@ -221,7 +221,7 @@ llvm::Value* PostfixExpr::Emit() {
             opVec = llvm::InsertElementInst::Create(opVec, num, llvm::ConstantInt::get(irgen->GetIntType(), index), "", block);
         }
 
-        llvm::Value *toRet;
+        llvm::Value *toRet = NULL;
         if (op->IsOp("++")) {
             toRet = llvm::BinaryOperator::CreateFAdd(leftExpr, opVec, "", block);
         }
@@ -231,6 +231,8 @@ llvm::Value* PostfixExpr::Emit() {
         new llvm::StoreInst(toRet, loc->getPointerOperand(), block);
         return toRet;
     }
+
+		return NULL;
 }
 
 llvm::Value* RelationalExpr::Emit() {
@@ -285,6 +287,8 @@ llvm::Value* RelationalExpr::Emit() {
                 leftExpr, rightExpr, "", block);
         }
     }
+
+		return NULL;
 }
 
 llvm::Value* AssignExpr::Emit() {
@@ -307,10 +311,10 @@ llvm::Value* AssignExpr::Emit() {
             llvm::Value* daBase = leftFieldAccess->getDaBase()->Emit();
             llvm::LoadInst* loadingInstr = llvm::cast<llvm::LoadInst>(daBase);
 
-            llvm::Value *teamLeft;
-            llvm::Value *teamRight;
-            llvm::Value *toAdd;
-            llvm::Value *victor;
+            llvm::Value *teamLeft = NULL;
+            llvm::Value *teamRight = NULL;
+            llvm::Value *toAdd = NULL;
+            llvm::Value *victor = NULL;
 
             int countMe = 0;
 
@@ -345,15 +349,14 @@ llvm::Value* AssignExpr::Emit() {
             }
             new llvm::StoreInst(victor, loadingInstr->getPointerOperand(), block);
         }
-        else if (!dynamic_cast<llvm::ExtractElementInst*>(leftExpr)) {
+        else if (dynamic_cast<llvm::ExtractElementInst*>(leftExpr)) {
             FieldAccess *leftFieldAccess =
                 dynamic_cast<FieldAccess*>(left);
 
             llvm::Value* daBase = leftFieldAccess->getDaBase()->Emit();
             llvm::LoadInst* loadingInstr = llvm::cast<llvm::LoadInst>(daBase);
-            llvm::Value *teamLeft;
-            llvm::Value *victor;
-            int countMe = 0;
+            llvm::Value *teamLeft = NULL;
+            llvm::Value *victor = NULL;
 
             switch (*leftFieldAccess->getDaField()->GetName()) {
                 case 'x':
@@ -390,9 +393,9 @@ llvm::Value* AssignExpr::Emit() {
         llvm::Value* daBase = leftFieldAccess->getDaBase()->Emit();
         llvm::LoadInst* loadingInstr = llvm::cast<llvm::LoadInst>(daBase);
 
-        llvm::Value *teamLeft;
-        llvm::Value *teamRight;
-        llvm::Value *toAdd;
+        llvm::Value *teamLeft = NULL;
+        llvm::Value *teamRight = NULL;
+        llvm::Value *toAdd = NULL;
         llvm::Value *victor = daBase;
 
         int countMe = 0;
@@ -543,8 +546,8 @@ llvm::Value* AssignExpr::Emit() {
 }
 
 llvm::Value* ArithmeticExpr::Emit() {
-    llvm::Value *leftExpr;
-    llvm::Value *rightExpr;
+    llvm::Value *leftExpr = NULL;
+    llvm::Value *rightExpr = NULL;
     llvm::BasicBlock *block = irgen->GetBasicBlock();
 
     if (left) {
@@ -609,7 +612,7 @@ llvm::Value* ArithmeticExpr::Emit() {
                 rightExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 4)) {
             llvm::Value *opVec = llvm::Constant::getNullValue(rightExpr->getType());
             llvm::Value *num = llvm::ConstantFP::get(irgen->GetFloatType(), 1.0);
-            int numElem;
+            int numElem = 0;
 
             if (rightExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2))
                 numElem = 2;
@@ -622,7 +625,7 @@ llvm::Value* ArithmeticExpr::Emit() {
                 opVec = llvm::InsertElementInst::Create(opVec, num, llvm::ConstantInt::get(irgen->GetIntType(), index), "", block);
             }
 
-            llvm::Value *toRet;
+            llvm::Value *toRet = NULL;
             if (op->IsOp("++")) {
                 toRet = llvm::BinaryOperator::CreateFAdd(rightExpr, opVec, "", block);
             }
@@ -682,7 +685,7 @@ llvm::Value* ArithmeticExpr::Emit() {
         rightExpr->getType() == irgen->GetFloatType()) {
 
         llvm::Value *opVec = llvm::Constant::getNullValue(leftExpr->getType());
-        int numElem;
+        int numElem = 0;
 
         if (leftExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2)) {
             numElem = 2;
@@ -719,7 +722,7 @@ llvm::Value* ArithmeticExpr::Emit() {
         leftExpr->getType() == irgen->GetFloatType()) {
 
         llvm::Value *opVec = llvm::Constant::getNullValue(rightExpr->getType());
-        int numElem;
+        int numElem = 0;
 
         if (rightExpr->getType() == llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2)) {
             numElem = 2;

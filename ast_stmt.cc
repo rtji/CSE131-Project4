@@ -24,13 +24,13 @@ void Program::PrintChildren(int indentLevel) {
 
 llvm::Value* BreakStmt::Emit() {
     llvm::BranchInst::Create(irgen->breakStack->top(), irgen->GetBasicBlock());
-    //irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction()));
+    //irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "break", irgen->GetFunction()));
     return NULL;
 }
 
 llvm::Value* ContinueStmt::Emit() {
     llvm::BranchInst::Create(irgen->continueStack->top(), irgen->GetBasicBlock());
-    irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction()));
+    irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "continue", irgen->GetFunction()));
     return NULL;
 }
 
@@ -42,9 +42,9 @@ llvm::Value* WhileStmt::Emit() {
     llvm::BasicBlock *block = irgen->GetBasicBlock();
 
     // create and push basic block for footer, step, body and header
-    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "whileFooter", irgen->GetFunction());
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "whileBody", irgen->GetFunction());
+    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "whileHeader", irgen->GetFunction());
 
     irgen->footStack->push(footerBlock);
     irgen->breakStack->push(footerBlock);
@@ -87,10 +87,10 @@ llvm::Value* ForStmt::Emit() {
     llvm::BasicBlock *block = irgen->GetBasicBlock();
 
     // create and push basic block for footer, step, body and header
-    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-    llvm::BasicBlock *stepBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "forFooter", irgen->GetFunction());
+    llvm::BasicBlock *stepBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "forStep", irgen->GetFunction());
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "forBody", irgen->GetFunction());
+    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "forheader", irgen->GetFunction());
 
     irgen->footStack->push(footerBlock);
     irgen->breakStack->push(footerBlock);
@@ -106,7 +106,7 @@ llvm::Value* ForStmt::Emit() {
     headerBlock->moveAfter(block);
 
     // IR gen for headBB
-    irgen->SetBasicBlock(bodyBlock);
+    irgen->SetBasicBlock(headerBlock);
 
     // emit for test
     llvm::BranchInst::Create(bodyBlock, footerBlock, test->Emit(), headerBlock);
@@ -125,11 +125,11 @@ llvm::Value* ForStmt::Emit() {
     }
 
     // emit for step
+		stepBlock->moveAfter(irgen->GetBasicBlock());
     irgen->SetBasicBlock(stepBlock);
-    stepBlock->moveAfter(bodyBlock);
-    if (step) {
+    //if (step) {
         step->Emit();
-    }
+    //}
     llvm::BranchInst::Create(headerBlock, stepBlock);
     irgen->SetBasicBlock(footerBlock);
     footerBlock->moveAfter(stepBlock);
@@ -143,7 +143,7 @@ llvm::Value* ForStmt::Emit() {
       new llvm::UnreachableInst(*irgen->GetContext(), footerBlock);
     }
     else {*/
-      irgen->SetBasicBlock(footerBlock);
+     /* irgen->SetBasicBlock(footerBlock);
       llvm::BasicBlock* pfootBlock = irgen->footStack->top();
       if(irgen->footStack->size() != 0){
         if(pfootBlock != footerBlock){
@@ -152,7 +152,7 @@ llvm::Value* ForStmt::Emit() {
             llvm::BranchInst::Create(stepBlock, pfootBlock);
           }
         }
-      }
+      }*/
     //}
 
     irgen->footStack->pop();
@@ -181,24 +181,24 @@ llvm::Value* Program::Emit() {
 llvm::Value* IfStmt::Emit() {
     llvm::BasicBlock* block = irgen->GetBasicBlock();
 
+    symtab->push();
+
     // emit for test condition
     llvm::Value* check = test->Emit();
-    symtab->push();
 
     // create and push basic block for footer
     llvm::BasicBlock *footerBlock =
-        llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+        llvm::BasicBlock::Create(*irgen->GetContext(), "ifFooter", irgen->GetFunction());
     irgen->footStack->push(footerBlock);
 
     // if "if statement" has a corresponding else body, create basic block for elsebody and push
     llvm::BasicBlock *elseBlock;
     if (elseBody) {
-        elseBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
-        //irgen->elseStack->push(elseBlock);
+        elseBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "elseBlock", irgen->GetFunction());
     }
 
     // create basic block for then part
-    llvm::BasicBlock *thenBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *thenBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "thenBlock", irgen->GetFunction());
 
     // create branch instructions with all parameters calculated above
     llvm::BranchInst::Create(thenBlock, elseBody ? elseBlock : footerBlock, check, block);
@@ -213,13 +213,14 @@ llvm::Value* IfStmt::Emit() {
         llvm::BranchInst::Create(footerBlock, thenBlock);
     }
 
-    symtab->pop();
-    symtab->push();
+ //   symtab->pop();
+   // symtab->push();
 
     // emit code for point else-basicblock
     if (elseBody) {
         irgen->SetBasicBlock(elseBlock);
         elseBody->Emit();
+
         // create jump for else-basicblock
         if (!elseBlock->getTerminator()) {
             llvm::BranchInst::Create(footerBlock, elseBlock);
@@ -227,7 +228,11 @@ llvm::Value* IfStmt::Emit() {
     }
     if (elseBlock) footerBlock->moveAfter(elseBlock);
     else footerBlock->moveAfter(thenBlock);
+		irgen->SetBasicBlock(footerBlock);
     irgen->footStack->pop();
+
+		//if (!footerBlock->getTerminator())
+			//llvm::BranchInst::Create(block, footerBlock);
 
     symtab->pop();
     return NULL;
