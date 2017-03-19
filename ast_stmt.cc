@@ -192,7 +192,7 @@ llvm::Value* IfStmt::Emit() {
     irgen->footStack->push(footerBlock);
 
     // if "if statement" has a corresponding else body, create basic block for elsebody and push
-    llvm::BasicBlock *elseBlock;
+    llvm::BasicBlock *elseBlock = NULL;
     if (elseBody) {
         elseBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "elseBlock", irgen->GetFunction());
     }
