@@ -49,6 +49,12 @@ class SymbolTable;
 class MyStack;
 class FnDecl;
 
+const int ZERO = 0;
+const int ONE = 1;
+const int TWO = 2;
+const int THREE = 3;
+const int FOUR = 4;
+
 class Node  {
   protected:
     yyltype *location;
