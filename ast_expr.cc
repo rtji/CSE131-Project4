@@ -9,6 +9,164 @@
 #include "ast_decl.h"
 #include "symtable.h"
 
+
+
+llvm::Value* ArrayAccess::Emit() {
+/*-----------------*/
+/*
+//llvm::GetElementPtrInst::Create(Value *Ptr, ArrayRef<Value*> IdxList, const Twine &NameStr, BasicBlock *InsertAtEnd);
+//idx = llvm::ConstantInt::get(irgen->GetIntType(), 0);
+std::vector<llvm::Value*> arrayBase;
+arrayBase.push_back(llvm::ConstantInt::get(irgen->GetIntType(), 0));
+arrayBase.push_back(subscript->Emit());
+llvm::Value* arrayElem = llvm::GetElementPtrInst::Create(dynamic_cast<llvm::LoadInst*>(base->Emit())->getPointerOperand(), arrayBase, "", irgen->GetBasicBlock());
+//llvm::Value* lInst = new llvm::LoadInst( v, exprName, irgen->GetBasicBlock() );
+return new llvm::LoadInst(arrayElem, "", irgen->GetBasicBlock());
+*/
+/*-----------------*/
+
+    std::vector<llvm::Value*> theActualArray;
+    llvm::Value *pushing = llvm::ConstantInt::get(irgen->GetIntType(), 0);
+
+    theActualArray.push_back(pushing);
+    theActualArray.push_back(subscript->Emit());
+
+    llvm::Value* daElement =
+        llvm::GetElementPtrInst::Create
+        (dynamic_cast<llvm::LoadInst*>(base->Emit())->getPointerOperand(), theActualArray, "", irgen->GetBasicBlock());
+
+
+    return new llvm::LoadInst(daElement, "", irgen->GetBasicBlock());
+}
+
+llvm::Value* Call::Emit() {
+    llvm::Function *funcFromSymtab = (llvm::Function*)symtab->find(field->GetName());
+    vector<llvm::Value*> actualsList = vector<llvm::Value*>();
+
+    for (int i = 0; i < actuals->NumElements(); ++i) {
+        actualsList.push_back(actuals->Nth(i)->Emit());
+    }
+    llvm::Value *returning =
+        llvm::CallInst::Create(funcFromSymtab, llvm::ArrayRef<llvm::Value*>(actualsList), "", irgen->GetBasicBlock());
+    return returning;
+}
+
+llvm::Value* ConditionalExpr::Emit() {
+    llvm::BasicBlock* block = irgen->GetBasicBlock();
+    llvm::Value* tExp = trueExpr->Emit();
+    llvm::Value* fExp = falseExpr->Emit();
+    llvm::Value* test = cond->Emit();
+
+    return llvm::SelectInst::Create(test, tExp, fExp, "", block);
+}
+
+llvm::Value* EqualityExpr::Emit() {
+    llvm::Value *leftExpr = left->Emit();
+    llvm::Value *rightExpr = right->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    /*----- INT EQUALITY -----*/
+    if (leftExpr->getType() == irgen->GetIntType() &&
+    rightExpr->getType() == irgen->GetIntType()) {
+        if (op->IsOp("==")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_EQ,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("!=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::ICmp, llvm::ICmpInst::ICMP_NE,
+                leftExpr, rightExpr, "", block);
+        }
+    }
+
+    /*----- FLOAT EQUALITY -----*/
+    else if (leftExpr->getType() == irgen->GetFloatType() &&
+    rightExpr->getType() == irgen->GetFloatType()) {
+        if (op->IsOp("==")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::ICmpInst::FCMP_OEQ,
+                leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("!=")) {
+            return llvm::CmpInst::Create
+                (llvm::CmpInst::FCmp, llvm::FCmpInst::FCMP_ONE,
+                leftExpr, rightExpr, "", block);
+        }
+    }
+    return NULL;
+}
+
+llvm::Value* LogicalExpr::Emit() {
+    llvm::Value *leftExpr = left->Emit();
+    llvm::Value *rightExpr = right->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    if (leftExpr->getType() == irgen->GetBoolType() &&
+    rightExpr->getType() == irgen->GetBoolType()) {
+        if (op->IsOp("&&")) {
+            return llvm::BinaryOperator::CreateAnd
+                (leftExpr, rightExpr, "", block);
+        }
+        else if (op->IsOp("||")) {
+            return llvm::BinaryOperator::CreateOr
+                (leftExpr, rightExpr, "", block);
+        }
+    }
+    return NULL;
+}
+
+llvm::Value* PostfixExpr::Emit() {
+    llvm::Value *leftExpr = left->Emit();
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+    llvm::LoadInst *loc = llvm::cast<llvm::LoadInst>(leftExpr);
+
+    if (leftExpr->getType() == irgen->GetIntType()) {
+        if (op->IsOp("++")) {
+            llvm::Value *val = llvm::BinaryOperator::CreateAdd(leftExpr,
+                llvm::ConstantInt::get(irgen->GetIntType(), 1), "", block);
+            new llvm::StoreInst(val, loc->getPointerOperand(), block);
+            return val;
+        }
+        else if (op->IsOp("--")) {
+            llvm::Value *val = llvm::BinaryOperator::CreateSub(leftExpr,
+                llvm::ConstantInt::get(irgen->GetIntType(), 1), "", block);
+            new llvm::StoreInst(val, loc->getPointerOperand(), block);
+            return val;
+        }
+        else if (op->IsOp("+")) {
+            return leftExpr;
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateMul(leftExpr,
+                llvm::ConstantInt::get(irgen->GetIntType(), 1, true),
+                "", block);
+        }
+    }
+    else if (leftExpr->getType() == irgen->GetFloatType()) {
+        if (op->IsOp("++")) {
+            llvm::Value *val = llvm::BinaryOperator::CreateFAdd(leftExpr,
+                llvm::ConstantFP::get(irgen->GetFloatType(), 1.0), "", block);
+            new llvm::StoreInst(val, loc->getPointerOperand(), block);
+            return val;
+        }
+        else if (op->IsOp("--")) {
+            llvm::Value *val = llvm::BinaryOperator::CreateFSub(leftExpr,
+                llvm::ConstantFP::get(irgen->GetFloatType(), 1.0), "", block);
+            new llvm::StoreInst(val, loc->getPointerOperand(), block);
+            return val;
+        }
+        else if (op->IsOp("+")) {
+            return leftExpr;
+        }
+        else if (op->IsOp("-")) {
+            return llvm::BinaryOperator::CreateFMul(leftExpr,
+                llvm::ConstantFP::get(irgen->GetFloatType(), -1.0),
+                "", block);
+        }
+    }
+}
+
 llvm::Value* RelationalExpr::Emit() {
     llvm::Value *leftExpr = left->Emit();
     llvm::Value *rightExpr = right->Emit();
@@ -144,15 +302,72 @@ llvm::Value* AssignExpr::Emit() {
     return NULL;
 }
 
-
 llvm::Value* ArithmeticExpr::Emit() {
-
-    llvm::Value *leftExpr = left->Emit();
-    llvm::Value *rightExpr = right->Emit();
+    llvm::Value *leftExpr;
+    llvm::Value *rightExpr;
     llvm::BasicBlock *block = irgen->GetBasicBlock();
 
+    if (left) {
+        leftExpr = left->Emit();
+    }
+
+    if (right) {
+        rightExpr = right->Emit();
+    }
+
+    /*---------- PREFIX UNARY ----------*/
+    if (rightExpr && !leftExpr) {
+
+        llvm::LoadInst *loc = llvm::cast<llvm::LoadInst>(rightExpr);
+
+        if (rightExpr->getType() == irgen->GetIntType()) {
+            if (op->IsOp("++")) {
+                llvm::Value *val = llvm::BinaryOperator::CreateAdd(rightExpr,
+                    llvm::ConstantInt::get(irgen->GetIntType(), 1), "", block);
+                new llvm::StoreInst(val, loc->getPointerOperand(), block);
+                return val;
+            }
+            else if (op->IsOp("--")) {
+                llvm::Value *val = llvm::BinaryOperator::CreateSub(rightExpr,
+                    llvm::ConstantInt::get(irgen->GetIntType(), 1), "", block);
+                new llvm::StoreInst(val, loc->getPointerOperand(), block);
+                return val;
+            }
+            else if (op->IsOp("+")) {
+                return rightExpr;
+            }
+            else if (op->IsOp("-")) {
+                return llvm::BinaryOperator::CreateMul(rightExpr,
+                    llvm::ConstantInt::get(irgen->GetIntType(), 1, true),
+                    "", block);
+            }
+        }
+        else if (rightExpr->getType() == irgen->GetFloatType()) {
+            if (op->IsOp("++")) {
+                llvm::Value *val = llvm::BinaryOperator::CreateFAdd(rightExpr,
+                    llvm::ConstantFP::get(irgen->GetFloatType(), 1.0), "", block);
+                new llvm::StoreInst(val, loc->getPointerOperand(), block);
+                return val;
+            }
+            else if (op->IsOp("--")) {
+                llvm::Value *val = llvm::BinaryOperator::CreateFSub(rightExpr,
+                    llvm::ConstantFP::get(irgen->GetFloatType(), 1.0), "", block);
+                new llvm::StoreInst(val, loc->getPointerOperand(), block);
+                return val;
+            }
+            else if (op->IsOp("+")) {
+                return rightExpr;
+            }
+            else if (op->IsOp("-")) {
+                return llvm::BinaryOperator::CreateFMul(rightExpr,
+                    llvm::ConstantFP::get(irgen->GetFloatType(), -1.0),
+                    "", block);
+            }
+        }
+    }
+
     /*---------- LEFT: INT, RIGHT: INT ----------*/
-    if (leftExpr->getType() == irgen->GetIntType() &&
+    else if (leftExpr->getType() == irgen->GetIntType() &&
     rightExpr->getType() == irgen->GetIntType()) {
         if (op->IsOp("+")) {
             return llvm::BinaryOperator::CreateAdd (leftExpr, rightExpr, "", block);
@@ -185,8 +400,11 @@ llvm::Value* ArithmeticExpr::Emit() {
             return llvm::BinaryOperator::CreateFDiv(leftExpr, rightExpr, "", block);
         }
     }
+
+
     return NULL;
 }
+
 llvm::Value* IntConstant::Emit() {
     return llvm::ConstantInt::get(irgen->GetIntType(), value);
 }

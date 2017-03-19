@@ -1,2 +1,1 @@
-funct: foo
-param: int, 4
+funct: main

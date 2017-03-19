@@ -25,7 +25,8 @@ class IRGenerator {
     ~IRGenerator();
 
     std::stack<llvm::BasicBlock*>* footStack;
-    std::stack<llvm::BasicBlock*>* elseStack;
+    std::stack<llvm::BasicBlock*>* breakStack;
+    std::stack<llvm::BasicBlock*>* continueStack;
 
     llvm::Module   *GetOrCreateModule(const char *moduleID);
     llvm::LLVMContext *GetContext() const { return context; }

@@ -106,7 +106,7 @@ class WhileStmt : public LoopStmt
     WhileStmt(Expr *test, Stmt *body) : LoopStmt(test, body) {}
     const char *GetPrintNameForNode() { return "WhileStmt"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class IfStmt : public ConditionalStmt
@@ -134,7 +134,7 @@ class BreakStmt : public Stmt
   public:
     BreakStmt(yyltype loc) : Stmt(loc) {}
     const char *GetPrintNameForNode() { return "BreakStmt"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class ContinueStmt : public Stmt
@@ -142,7 +142,7 @@ class ContinueStmt : public Stmt
   public:
     ContinueStmt(yyltype loc) : Stmt(loc) {}
     const char *GetPrintNameForNode() { return "ContinueStmt"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class ReturnStmt : public Stmt

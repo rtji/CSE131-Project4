@@ -12,6 +12,8 @@ IRGenerator::IRGenerator() :
     currentBB(NULL)
     {
         footStack = new std::stack<llvm::BasicBlock*>;
+        breakStack = new std::stack<llvm::BasicBlock*>;
+        continueStack = new std::stack<llvm::BasicBlock*>;
     }
 
 IRGenerator::~IRGenerator() {}

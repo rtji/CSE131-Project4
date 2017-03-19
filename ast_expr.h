@@ -147,7 +147,7 @@ class EqualityExpr : public CompoundExpr
   public:
     EqualityExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     const char *GetPrintNameForNode() { return "EqualityExpr"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class LogicalExpr : public CompoundExpr
@@ -156,7 +156,7 @@ class LogicalExpr : public CompoundExpr
     LogicalExpr(Expr *lhs, Operator *op, Expr *rhs) : CompoundExpr(lhs,op,rhs) {}
     LogicalExpr(Operator *op, Expr *rhs) : CompoundExpr(op,rhs) {}
     const char *GetPrintNameForNode() { return "LogicalExpr"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class AssignExpr : public CompoundExpr
@@ -172,7 +172,7 @@ class PostfixExpr : public CompoundExpr
   public:
     PostfixExpr(Expr *lhs, Operator *op) : CompoundExpr(lhs,op) {}
     const char *GetPrintNameForNode() { return "PostfixExpr"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class ConditionalExpr : public Expr
@@ -183,7 +183,7 @@ class ConditionalExpr : public Expr
     ConditionalExpr(Expr *c, Expr *t, Expr *f);
     void PrintChildren(int indentLevel);
     const char *GetPrintNameForNode() { return "ConditionalExpr"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class LValue : public Expr
@@ -202,7 +202,7 @@ class ArrayAccess : public LValue
     ArrayAccess(yyltype loc, Expr *base, Expr *subscript);
     const char *GetPrintNameForNode() { return "ArrayAccess"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 /* Note that field access is used both for qualified names
@@ -239,7 +239,7 @@ class Call : public Expr
     Call(yyltype loc, Expr *base, Identifier *field, List<Expr*> *args);
     const char *GetPrintNameForNode() { return "Call"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class ActualsError : public Call

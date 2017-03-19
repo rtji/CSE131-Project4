@@ -30,6 +30,7 @@ llvm::Value* VarDecl::Emit() {
                 sym->name);
         }
         else {
+            if (getLLVMType()) cerr << getLLVMType();
             sym->value = new llvm::AllocaInst(getLLVMType(), sym->name, irgen->GetBasicBlock());
         }
         symtab->insert(*sym);
@@ -110,6 +111,7 @@ llvm::Type * VarDecl::getLLVMType() const {
     if (GetType() == Type::intType) return irgen->GetIntType();
     else if (GetType() == Type::boolType) return irgen->GetBoolType();
     else if (GetType() == Type::floatType) return irgen->GetFloatType();
+    else if (GetType() == Type::voidType) return llvm::Type::getVoidTy(*irgen->GetContext());
     else if (GetType() == Type::vec2Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2);
     else if (GetType() == Type::vec3Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 3);
     else if (GetType() == Type::vec4Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 4);
@@ -121,6 +123,7 @@ llvm::Type * FnDecl::getLLVMType() const {
     if (GetType() == Type::intType) return irgen->GetIntType();
     else if (GetType() == Type::boolType) return irgen->GetBoolType();
     else if (GetType() == Type::floatType) return irgen->GetFloatType();
+    else if (GetType() == Type::voidType) return llvm::Type::getVoidTy(*irgen->GetContext());
     else if (GetType() == Type::voidType) return llvm::Type::getVoidTy(*irgen->GetContext());
     else if (GetType() == Type::vec2Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 2);
     else if (GetType() == Type::vec3Type) return llvm::VectorType::get(llvm::Type::getFloatTy(*irgen->GetContext()), 3);

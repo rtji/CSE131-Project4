@@ -12,9 +12,6 @@
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace llvm;
-
-
 Program::Program(List<Decl*> *d) {
     Assert(d != NULL);
     (decls=d)->SetParentAll(this);
@@ -23,6 +20,63 @@ Program::Program(List<Decl*> *d) {
 void Program::PrintChildren(int indentLevel) {
     decls->PrintAll(indentLevel+1);
     printf("\n");
+}
+
+llvm::Value* BreakStmt::Emit() {
+    llvm::BranchInst::Create(irgen->breakStack->top(), irgen->GetBasicBlock());
+    //irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction()));
+    return NULL;
+}
+
+llvm::Value* ContinueStmt::Emit() {
+    llvm::BranchInst::Create(irgen->continueStack->top(), irgen->GetBasicBlock());
+    irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction()));
+    return NULL;
+}
+
+llvm::Value* WhileStmt::Emit() {
+    // cuz we need a new scope yoooo :)
+    symtab->push();
+
+    // so we don't have to keep typing irgen->GetBasicBlock()
+    llvm::BasicBlock *block = irgen->GetBasicBlock();
+
+    // create and push basic block for footer, step, body and header
+    llvm::BasicBlock *footerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+    llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
+
+    irgen->footStack->push(footerBlock);
+    irgen->breakStack->push(footerBlock);
+    irgen->continueStack->push(bodyBlock);
+
+    // create a branch to terminate current basic block and start loop header
+    llvm::BranchInst::Create(headerBlock, block);
+    headerBlock->moveAfter(block);
+
+    // IR gen for headBB
+    irgen->SetBasicBlock(headerBlock);
+
+    // emit for test
+    llvm::BranchInst::Create(bodyBlock, footerBlock, test->Emit(), headerBlock);
+
+    // emit for body
+    if (body) {
+        irgen->SetBasicBlock(bodyBlock);
+        body->Emit();
+    }
+
+    // check if there is a terminator instruction else create one
+    if (!bodyBlock->getTerminator()) {
+        llvm::BranchInst::Create(headerBlock, bodyBlock);
+    }
+    footerBlock->moveAfter(bodyBlock);
+
+    irgen->footStack->pop();
+    irgen->breakStack->pop();
+    irgen->continueStack->pop();
+    symtab->pop();
+    return NULL;
 }
 
 llvm::Value* ForStmt::Emit() {
@@ -38,6 +92,10 @@ llvm::Value* ForStmt::Emit() {
     llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
     llvm::BasicBlock *headerBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "", irgen->GetFunction());
 
+    irgen->footStack->push(footerBlock);
+    irgen->breakStack->push(footerBlock);
+    irgen->continueStack->push(stepBlock);
+
     // emit for initialization if any
     if (init) {
         init->Emit();
@@ -48,16 +106,16 @@ llvm::Value* ForStmt::Emit() {
     headerBlock->moveAfter(block);
 
     // IR gen for headBB
-    irgen->SetBasicBlock(headerBlock);
+    irgen->SetBasicBlock(bodyBlock);
 
     // emit for test
     llvm::BranchInst::Create(bodyBlock, footerBlock, test->Emit(), headerBlock);
 
     // jump to footer
 
-
     // emit for body
     if (body) {
+        irgen->SetBasicBlock(bodyBlock);
         body->Emit();
     }
 
@@ -73,6 +131,7 @@ llvm::Value* ForStmt::Emit() {
         step->Emit();
     }
     llvm::BranchInst::Create(headerBlock, stepBlock);
+    irgen->SetBasicBlock(footerBlock);
     footerBlock->moveAfter(stepBlock);
 
     // create terminator for step*/
@@ -80,6 +139,25 @@ llvm::Value* ForStmt::Emit() {
         llvm::BranchInst::Create(footerBlock, stepBlock);
     }
 
+    /*if(footerBlock->getSinglePredecessor() == footerBlock->getSingleSuccessor()) {
+      new llvm::UnreachableInst(*irgen->GetContext(), footerBlock);
+    }
+    else {*/
+      irgen->SetBasicBlock(footerBlock);
+      llvm::BasicBlock* pfootBlock = irgen->footStack->top();
+      if(irgen->footStack->size() != 0){
+        if(pfootBlock != footerBlock){
+          irgen->footStack->pop();
+          if(!pfootBlock->getTerminator()){
+            llvm::BranchInst::Create(stepBlock, pfootBlock);
+          }
+        }
+      }
+    //}
+
+    irgen->footStack->pop();
+    irgen->breakStack->pop();
+    irgen->continueStack->pop();
     symtab->pop();
     return NULL;
 }
@@ -128,7 +206,7 @@ llvm::Value* IfStmt::Emit() {
     // emit code for point then-basicblock
     irgen->SetBasicBlock(thenBlock);
     body->Emit();
-    elseBlock->moveAfter(thenBlock);
+    if (elseBlock) elseBlock->moveAfter(thenBlock);
 
     // create jump to foot-basicblock
     if (!thenBlock->getTerminator()) {
@@ -147,7 +225,8 @@ llvm::Value* IfStmt::Emit() {
             llvm::BranchInst::Create(footerBlock, elseBlock);
         }
     }
-    footerBlock->moveAfter(elseBlock);
+    if (elseBlock) footerBlock->moveAfter(elseBlock);
+    else footerBlock->moveAfter(thenBlock);
     irgen->footStack->pop();
 
     symtab->pop();
