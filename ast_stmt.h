@@ -169,6 +169,7 @@ class SwitchLabel : public Stmt
     SwitchLabel(Stmt *stmt);
     void PrintChildren(int indentLevel);
     virtual llvm::Value* Emit() {return NULL;}
+		Expr* GetLabel() {return label;}
 };
 
 class Case : public SwitchLabel
@@ -177,7 +178,7 @@ class Case : public SwitchLabel
     Case() : SwitchLabel() {}
     Case(Expr *label, Stmt *stmt) : SwitchLabel(label, stmt) {}
     const char *GetPrintNameForNode() { return "Case"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class Default : public SwitchLabel
@@ -185,7 +186,7 @@ class Default : public SwitchLabel
   public:
     Default(Stmt *stmt) : SwitchLabel(stmt) {}
     const char *GetPrintNameForNode() { return "Default"; }
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class SwitchStmt : public Stmt
@@ -200,7 +201,7 @@ class SwitchStmt : public Stmt
     SwitchStmt(Expr *expr, List<Stmt*> *cases, Default *def);
     virtual const char *GetPrintNameForNode() { return "SwitchStmt"; }
     void PrintChildren(int indentLevel);
-    //llvm::Value* Emit();
+    llvm::Value* Emit();
 };
 
 class SwitchStmtError : public SwitchStmt

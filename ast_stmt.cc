@@ -22,6 +22,105 @@ void Program::PrintChildren(int indentLevel) {
     printf("\n");
 }
 
+llvm::Value* Case::Emit() {
+    stmt->Emit();
+		return NULL;
+}
+
+llvm::Value* Default::Emit() {
+    stmt->Emit();
+		return NULL;
+}
+
+llvm::Value* SwitchStmt::Emit() {
+	llvm::BasicBlock* block = irgen->GetBasicBlock();
+	llvm::Function* fun = irgen->GetFunction();
+	List<llvm::BasicBlock*> blockList = List<llvm::BasicBlock*>();
+
+	symtab->push();
+
+	llvm::BasicBlock* defaultBlock = NULL;
+	llvm::BasicBlock* footerBlock = llvm::BasicBlock::Create(
+		*irgen->GetContext(), "switchFooter", fun);
+	irgen->footStack->push(footerBlock);
+	irgen->breakStack->push(footerBlock);
+
+	llvm::SwitchInst *switchThing = llvm::SwitchInst::Create(expr->Emit(), footerBlock, cases->NumElements(), block);
+
+	// Make default block if def exists
+	if (def) defaultBlock = llvm::BasicBlock::Create(*irgen->GetContext(), "defaultBlock", fun);
+
+	// Loop through cases to make list of blocks
+	for (int num = 0; num < cases->NumElements(); num++) {
+		if (dynamic_cast<Case*>(cases->Nth(num))) {
+			blockList.Append(llvm::BasicBlock::Create(
+				*irgen->GetContext(), "caseBlock", fun));
+		}
+		else if (dynamic_cast<Default*>(cases->Nth(num))) {
+			blockList.Append(defaultBlock);
+		}
+	}
+
+	// Loop through cases and emit them into matching blocks
+	int count = 0;
+	for (int num = 0; num < cases->NumElements(); num++) {
+		llvm::BasicBlock *currentCaseBlock = NULL;
+		if (count < blockList.NumElements()) {
+			currentCaseBlock = blockList.Nth(count);
+		}
+		Case *cake = dynamic_cast<Case*>(cases->Nth(num));
+		Default *dake = dynamic_cast<Default*>(cases->Nth(num));
+		
+		if (cake) {
+			irgen->SetBasicBlock(currentCaseBlock);
+
+			llvm::Value *labelEval = cake->GetLabel()->Emit();
+			if (currentCaseBlock) {
+				llvm::ConstantInt* caseName = llvm::cast<llvm::ConstantInt>(labelEval);
+				switchThing->addCase(caseName, currentCaseBlock);
+			}
+
+			symtab->push();
+			cake->Emit();
+
+			symtab->pop();
+			count++;
+		}
+		else if (dake) {
+			irgen->SetBasicBlock(currentCaseBlock);
+			switchThing->setDefaultDest(defaultBlock);
+
+			symtab->push();
+			dake->Emit();
+
+			symtab->pop();
+			count++;
+		}
+
+		if (currentCaseBlock && !currentCaseBlock->getTerminator() && !cake) {
+			llvm::BranchInst::Create(blockList.Nth(count), currentCaseBlock);
+		}
+	}
+
+	irgen->SetBasicBlock(footerBlock);
+	if (irgen->footStack->size() > 0) {
+		llvm::BasicBlock *poppedFoot = irgen->footStack->top();
+		if (poppedFoot && poppedFoot != footerBlock) {
+			irgen->footStack->pop();
+			if (!poppedFoot->getTerminator()) {
+				llvm::BranchInst::Create(footerBlock, poppedFoot);
+			}
+			if (irgen->footStack->size() == 1) {
+				irgen->footStack->pop();
+			}
+		}
+	}
+
+	irgen->breakStack->pop();
+	symtab->pop();
+	return NULL;
+}
+
 llvm::Value* BreakStmt::Emit() {
     llvm::BranchInst::Create(irgen->breakStack->top(), irgen->GetBasicBlock());
     return NULL;
