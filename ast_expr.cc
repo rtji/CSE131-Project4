@@ -16,7 +16,7 @@ llvm::Value* FieldAccess::Emit() {
         std::vector<llvm::Constant*> Tswizzle;
 
         if (field) {
-            llvm::Constant* compilersIsSoAwesomeJustKidding;
+            llvm::Constant* compilersIsSoAwesomeJustKidding = NULL;
             for (char* it = field->GetName(); *it; ++it) {
                 if(*it == 'x') {
                     compilersIsSoAwesomeJustKidding =
