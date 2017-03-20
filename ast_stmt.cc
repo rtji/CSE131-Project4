@@ -83,6 +83,16 @@ llvm::Value* SwitchStmt::Emit() {
 			symtab->push();
 			cake->Emit();
 
+			for (int i = num; i < cases->NumElements(); i++) {
+				if (i + 1 < cases->NumElements()) {
+					Case *temp = dynamic_cast<Case*>(cases->Nth(i+1));
+					if (temp && !dynamic_cast<Default*>(temp) && 
+						!dynamic_cast<Case*>(temp)) {
+						temp->Emit();
+					}
+				}
+			}
+
 			symtab->pop();
 			count++;
 		}
@@ -92,6 +102,16 @@ llvm::Value* SwitchStmt::Emit() {
 
 			symtab->push();
 			dake->Emit();
+
+			for (int i = num; i < cases->NumElements(); i++) {
+				if (i + 1 < cases->NumElements()) {
+					Case *temp = dynamic_cast<Case*>(cases->Nth(i+1));
+					if (temp && !dynamic_cast<Default*>(temp) && 
+						!dynamic_cast<Case*>(temp)) {
+						temp->Emit();
+					}
+				}
+			}
 
 			symtab->pop();
 			count++;
