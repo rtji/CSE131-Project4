@@ -51,7 +51,7 @@ llvm::Value* FnDecl::Emit() {
     // if function does not exist, insert it into the symbol table
     if (!sym) {
         sym = new Symbol(GetIdentifier()->GetName(), this, E_FunctionDecl, 0);
-        symtab->insert(*sym);
+        //symtab->insert(*sym);
     }
 
     // start function scope
@@ -100,13 +100,13 @@ llvm::Value* FnDecl::Emit() {
 
     symtab->pop();
     sym->value = fun;
-    return NULL;
-    // return fun;
+		symtab->insert(*sym);
+    return fun;
 }
 
 llvm::Type * VarDecl::getLLVMType() const {
 		Type * type = GetType();
-		ArrayType *aType = dynamic_cast<ArrayType*>(GetType());
+		ArrayType *aType = dynamic_cast<ArrayType*>(type);
 		if (aType) {
 				type = aType->GetElemType();
 		}

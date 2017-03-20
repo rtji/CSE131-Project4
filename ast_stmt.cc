@@ -24,13 +24,11 @@ void Program::PrintChildren(int indentLevel) {
 
 llvm::Value* BreakStmt::Emit() {
     llvm::BranchInst::Create(irgen->breakStack->top(), irgen->GetBasicBlock());
-    //irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "break", irgen->GetFunction()));
     return NULL;
 }
 
 llvm::Value* ContinueStmt::Emit() {
     llvm::BranchInst::Create(irgen->continueStack->top(), irgen->GetBasicBlock());
-    irgen->SetBasicBlock(llvm::BasicBlock::Create(*irgen->GetContext(), "continue", irgen->GetFunction()));
     return NULL;
 }
 
@@ -71,6 +69,15 @@ llvm::Value* WhileStmt::Emit() {
         llvm::BranchInst::Create(headerBlock, bodyBlock);
     }
     footerBlock->moveAfter(bodyBlock);
+		irgen->SetBasicBlock(footerBlock);
+
+    llvm::BasicBlock *poppedFoot = irgen->footStack->top();
+		if (irgen->footStack->size() > 0 && poppedFoot != footerBlock) {
+		    irgen->footStack->pop();
+				if (!poppedFoot->getTerminator()) {
+				    llvm::BranchInst::Create(headerBlock, poppedFoot);
+				}
+		}
 
     irgen->footStack->pop();
     irgen->breakStack->pop();
@@ -155,6 +162,17 @@ llvm::Value* ForStmt::Emit() {
       }*/
     //}
 
+    llvm::BasicBlock *poppedFoot = irgen->footStack->top();
+		if (irgen->footStack->size() > 0 && poppedFoot != footerBlock) {
+		    irgen->footStack->pop();
+				if (!poppedFoot->getTerminator()) {
+				    llvm::BranchInst::Create(stepBlock, poppedFoot);
+				}
+				if (irgen->footStack->size() == 1) {
+				    irgen->footStack->pop();
+				}
+		}
+
     irgen->footStack->pop();
     irgen->breakStack->pop();
     irgen->continueStack->pop();
@@ -229,7 +247,17 @@ llvm::Value* IfStmt::Emit() {
     if (elseBlock) footerBlock->moveAfter(elseBlock);
     else footerBlock->moveAfter(thenBlock);
 		irgen->SetBasicBlock(footerBlock);
-    irgen->footStack->pop();
+		
+    llvm::BasicBlock *poppedFoot = irgen->footStack->top();
+		if (irgen->footStack->size() > 0 && poppedFoot != footerBlock) {
+		    irgen->footStack->pop();
+				if (!poppedFoot->getTerminator()) {
+				    llvm::BranchInst::Create(footerBlock, poppedFoot);
+				}
+				if (irgen->footStack->size() == 1) {
+				    irgen->footStack->pop();
+				}
+		}
 
 		//if (!footerBlock->getTerminator())
 			//llvm::BranchInst::Create(block, footerBlock);

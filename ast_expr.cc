@@ -45,13 +45,13 @@ llvm::Value* FieldAccess::Emit() {
                 }
             }
 
-            if(!strlen(field->GetName()) >= 2){
+            if (!(strlen(field->GetName()) >= 2)) {
                 return llvm::ExtractElementInst::Create
                 (daRealBase, compilersIsSoAwesomeJustKidding, "", block);
             }
 
-            llvm::ArrayRef<llvm::Constant*> swizzleArrayRef(Tswizzle);
-            llvm::Constant* isaacIsKool = llvm::ConstantVector::get(swizzleArrayRef);
+            llvm::ArrayRef<llvm::Constant*> swizzleRef(Tswizzle);
+            llvm::Constant* isaacIsKool = llvm::ConstantVector::get(swizzleRef);
             return new llvm::ShuffleVectorInst
                 (daRealBase, daRealBase, isaacIsKool, "", block);
         }
@@ -68,7 +68,7 @@ llvm::Value* ArrayAccess::Emit() {
     theActualArray->push_back(pushing);
     theActualArray->push_back(subscript->Emit());
 
-	llvm::LoadInst *arrayPtr = dynamic_cast<llvm::LoadInst*>(base->Emit());
+	  llvm::LoadInst *arrayPtr = dynamic_cast<llvm::LoadInst*>(base->Emit());
 
     llvm::Value* daElement =
         llvm::GetElementPtrInst::Create
@@ -78,7 +78,7 @@ llvm::Value* ArrayAccess::Emit() {
 }
 
 llvm::Value* Call::Emit() {
-    llvm::Function *funcFromSymtab = (llvm::Function*)symtab->find(field->GetName());
+    llvm::Function *funcFromSymtab = (llvm::Function*)symtab->find(field->GetName())->value;
     vector<llvm::Value*> actualsList = vector<llvm::Value*>();
 
     for (int i = 0; i < actuals->NumElements(); ++i) {
